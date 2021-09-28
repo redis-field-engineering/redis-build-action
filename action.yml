@@ -1,0 +1,107 @@
+name: 'Redis Release Action'
+description: 'Composite GitHub action for releasing Redis projects'
+inputs:
+  gpg-key-id:
+    description: "GPG Key ID"
+    required: true
+  gpg-secret-key:
+    description: "GPG secret key"
+    required: true
+  gpg-public-key:
+    description: "GPG public key"
+    required: true
+  gpg-passphrase:
+    description: "GPG passphrase"
+    required: true
+  sonatype-username:
+    description: "Sonatype username"
+    required: true
+  sonatype-password:
+    description: "Sonatype password"
+    required: true
+  github-token:
+    description: "GitHub Personal Access Token"
+    required: true
+  slack-webhook:
+    description: "Slack webhook URL"
+    required: true
+runs:
+  using: "composite"
+  steps:
+      - name: Version
+        id: vars
+        run: echo ::set-output name=version::$(cat VERSION)
+        shell: bash
+
+      - name: Set up Java
+        uses: actions/setup-java@v2
+        with:
+          java-version: 11
+          distribution: 'zulu'
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-cache-${{ hashFiles('**/*.gradle') }}-${{ hashFiles('**/gradle.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradlew') }}
+          restore-keys: |
+            ${{ runner.os }}-gradlew-
+
+      - name: Build
+        run: |
+          ./gradlew -Prelease=true build -S
+        shell: bash  
+
+      - name: Jacoco
+        run: ./gradlew -Prelease=true aggregateJacocoReport -S
+        shell: bash
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+
+      - name: Deploy
+        env:
+          GITHUB_USERNAME: jruaux
+          GPG_KEY_ID: ${{ inputs.gpg-key-id }}
+          GPG_SECRET_KEY: ${{ inputs.gpg-secret-key }}
+          GPG_PASSPHRASE: ${{ inputs.gpg-passphrase }}
+        run: |
+          ./gradlew -Prelease=true -Pfull-release=true \
+          -PsonatypeUsername=${{ inputs.sonatype-username }} \
+          -PsonatypePassword=${{ inputs.sonatype-password }} \
+          build publishToSonatype closeAndReleaseSonatypeStagingRepository -S
+        shell: bash
+
+      - name: Assemble
+        uses: jreleaser/release-action@v1
+        with:
+          arguments: assemble
+        env:
+          JRELEASER_PROJECT_VERSION: ${{ steps.vars.outputs.version }}
+          JRELEASER_GITHUB_TOKEN: ${{ inputs.github-token }}
+
+      - name: Release
+        uses: jreleaser/release-action@v1
+        with:
+          arguments: full-release
+        env:
+          JRELEASER_PROJECT_VERSION: ${{ steps.vars.outputs.version }}
+          JRELEASER_GITHUB_TOKEN: ${{ inputs.github-token }}
+          JRELEASER_GPG_PASSPHRASE: ${{ inputs.gpg-passphrase }}
+          JRELEASER_GPG_PUBLIC_KEY: ${{ inputs.gpg-public-key }}
+          JRELEASER_GPG_SECRET_KEY: ${{ inputs.gpg-secret-key }}
+          JRELEASER_SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
+
+      - name: JReleaser output
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifact
+          path: |
+            out/jreleaser/trace.log
+            out/jreleaser/output.properties
