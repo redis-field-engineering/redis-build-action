@@ -31,3 +31,23 @@ runs:
       run: |
         ./gradlew -Prelease=${{ inputs.release }} build -S
       shell: bash
+
+    - name: Aggregate test reports
+      run: |
+        ./gradlew -Prelease=${{ inputs.release }} aggregateTestReports -S
+      shell: bash
+
+    - name: Upload test reports
+      uses: actions/upload-artifact@v2
+      with:
+        name: test-reports
+        path: |
+          build/reports/aggregate-tests/
+
+    - name: Aggregate Jacoco report
+      run: |
+        ./gradlew -Prelease=${{ inputs.release }} aggregateJacocoReport -S
+      shell: bash
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v2
