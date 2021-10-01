@@ -20,30 +20,6 @@ runs:
         restore-keys: |
           ${{ runner.os }}-gradle-
 
-    - uses: actions/cache@v2
-      with:
-        path: ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradlew') }}
-        restore-keys: |
-          ${{ runner.os }}-gradlew-
-
-    - name: Build
-      run: |
-        ./gradlew -Prelease=${{ inputs.release }} build -S
-      shell: bash
-
-    - name: Aggregate test reports
-      run: |
-        ./gradlew -Prelease=${{ inputs.release }} aggregateTestReports -S
-      shell: bash
-
-    - name: Upload test reports
-      uses: actions/upload-artifact@v2
-      with:
-        name: test-reports
-        path: |
-          build/reports/aggregate-tests/
-
     - name: Aggregate Jacoco report
       run: |
         ./gradlew -Prelease=${{ inputs.release }} aggregateJacocoReport -S
