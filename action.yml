@@ -29,12 +29,7 @@ runs:
 
     - name: Build
       run: |
-        ./gradlew -Prelease=${{ inputs.release }} build -S
-      shell: bash
-
-    - name: Aggregate Jacoco report
-      run: |
-        ./gradlew -Prelease=${{ inputs.release }} aggregateJacocoReport -S
+        ./gradlew -Prelease=${{ inputs.release }} build aggregateTestReports aggregateJacocoReport -S
       shell: bash
 
     - name: Upload coverage to Codecov
