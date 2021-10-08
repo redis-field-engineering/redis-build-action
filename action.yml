@@ -4,6 +4,9 @@ inputs:
   release:
     description: "True if this build is part of a release"
     required: true
+  codecov-token:
+    description: "Upload token for codecov.io"
+    required: false
 runs:
   using: "composite"
   steps:
@@ -34,3 +37,5 @@ runs:
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
+      with:
+        token: ${{ inputs.codecov-token }}
